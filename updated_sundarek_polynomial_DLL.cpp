@@ -1,0 +1,295 @@
+//Kavya Sundaresan
+//400307169
+//sundarek
+
+#include <iostream>
+#include <math.h>
+
+using namespace std;
+class Term
+{
+    public:
+        Term(int c=0.0, int e=0) : coef(c), exp(e) {}
+        int coef;
+        int exp;
+};
+
+typedef Term Elem;				// list element type Term
+class DNode {					    // doubly linked list node
+    private:
+        Elem elem;					// node element value
+        DNode* prev;				// previous node in list
+        DNode* next;				// next node in list
+        friend class DLinkedList;	// allow DLinkedList access
+        friend class Polynomial;
+};
+
+class DLinkedList {				// doubly linked list
+    public:
+        DLinkedList();				// constructor
+        ~DLinkedList();				// destructor
+        bool empty() const;				// is list empty?
+        const Elem& front() const;			// get front element
+        const Elem& back() const;			// get back element
+        void addFront(const Elem& e);		// add to front of list
+        void addBack(const Elem& e);		// add to back of list
+        void removeFront();				// remove from front
+        void removeBack();				// remove from back
+    private:					// local type definitions
+        DNode* header;				// list sentinels
+        DNode* trailer;
+        friend class Polynomial;
+    protected:					// local utilities
+        void add(DNode* v, const Elem& e);		// insert new node before v
+        void remove(DNode* v);			// remove node v
+};
+
+DLinkedList::DLinkedList() {			// constructor
+    header = new DNode;				// create sentinels
+    trailer = new DNode;
+    header->next = trailer;			// have them point to each other
+    trailer->prev = header;
+}
+
+bool DLinkedList::empty() const		// is list empty?
+    { return (header->next == trailer); }
+
+const Elem& DLinkedList::front() const	// get front element
+    { return header->next->elem; }
+
+const Elem& DLinkedList::back() const		// get back element
+    { return trailer->prev->elem; }
+
+DLinkedList::~DLinkedList() {			// destructor
+    while (!empty()) removeFront();		// remove all but sentinels
+    delete header;				// remove the sentinels
+    delete trailer;
+}
+
+void DLinkedList::remove(DNode* v) {		// remove node v
+    DNode* u = v->prev;				// predecessor
+    DNode* w = v->next;				// successor
+    u->next = w;				// unlink v from list
+    w->prev = u;
+    delete v;
+}
+
+void DLinkedList::removeFront()		// remove from font
+    { remove(header->next); }
+  
+void DLinkedList::removeBack()		// remove from back
+    { remove(trailer->prev); }
+
+void DLinkedList::add(DNode* v, const Elem& e) { // insert new node before v
+    DNode* u = new DNode;  
+    u->elem = e;		// create a new node for e
+    u->next = v;				// link u in between v
+    u->prev = v->prev;				// ...and v->prev
+    v->prev->next = u;
+    v->prev = u;
+  }
+
+void DLinkedList::addFront(const Elem& e)	// add to front of list
+    { add(header->next, e); }
+  
+void DLinkedList::addBack(const Elem& e)	// add to back of list
+    { add(trailer, e); }
+
+
+
+
+
+class Polynomial {
+    public:
+        void insertTerm(int c,int e); //inserts a term into the linked list
+        friend istream& operator>>(istream& is, Polynomial& term); //takes inputs for coefficient and exponent of a term
+        friend ostream& operator<<(ostream& os, Polynomial& p); //outputs linked list
+        float eval(float x); //evaluates expression in linked list at a given x
+        Polynomial operator+(Polynomial& p); //adds two polynomial expressions
+    private:
+        string toString(); //converts linked list to a string
+        DLinkedList Dlist;
+};
+
+void Polynomial::insertTerm(int c,int e) {
+    DNode* v = Dlist.header;
+        while (v != NULL) {
+            if (e == 0) { //if the exponent is 0, add term to the end of the list
+                if (c == 0) { //do not add if the coefficient is 0
+                    break;
+                }
+                else {
+                    Elem new_v(c,e);
+                    Dlist.addBack(new_v);
+                    break;
+                }
+            }
+            else if (v->elem.exp == e) { //if the exponent argument is same as the exponent of an existing term
+                if (c == 0) { //if the new coefficient argument is 0, delete the term
+                    Dlist.remove(v);
+                }
+                else {
+                    v->elem.coef = c; //update the coefficient of that term to the new coefficient argument
+                }
+                break;
+            }
+            else if (v->next->elem.exp < e) { //if the next term's element is less than the exponent argument
+                if (c == 0) { //don't do anything if the coefficient is 0
+                    break;
+                }
+                else {
+                    Elem new_v(c,e); //make a new term with the arguments
+                    Dlist.add(v->next, new_v); //add the term after the current term
+                    break;
+                }
+            }
+            else if (Dlist.empty() == 1) { //if the list is empty
+                Elem new_v(c,e); //make a new term with the arguments
+                Dlist.addFront(new_v); //add the term to the front of the list
+                break;
+            }
+            v = v->next;
+        }
+}
+
+istream& operator>>(istream& is, Polynomial& term) {
+    int num = 0;
+    cout << "How many terms would you like to enter? " << endl; //determines number of terms that will be added
+    cin >> num;
+    int c = 0;
+    int e = 0;
+    for (int i=0; i<num; i++) {
+        cout << "Please input the coefficient and then the exponent in the format 'c e' without the quotation marks: " << endl;
+        is >> c >> e; //takes user input for coefficients and exponents
+        term.insertTerm(c,e); //inserts the term in the linked list
+    }
+    return is; 
+}
+
+ostream& operator<<(ostream& os, Polynomial& p) {
+    os << p.toString() <<endl; //converts linked list to a string and prints it
+    return os;
+}
+
+string Polynomial::toString() {
+    string poly = "";
+    DNode* v = Dlist.header;
+    while (v != NULL) {
+            if (v->elem.coef != 1 && v->elem.coef!=0) { //if the coefficient is not 1
+                if (v->elem.exp > 1) { //if the exponent is greater than 1
+                    poly += to_string(v->elem.coef);
+                    poly += "x^";
+                    poly += to_string(v->elem.exp);
+                }
+                else if (v->elem.exp == 1) { //if the exponent is 1
+                    poly += to_string(v->elem.coef);
+                    poly += "x";                  
+                } 
+                else { // if exponent is 0
+                   poly += to_string(v->elem.coef); 
+                }
+                if (v->next != NULL && v->next->elem.coef > 0) {
+                    poly += "+";
+                }
+            }
+            else if (v->elem.coef == 1) { //if coefficient is 1
+                if (v->elem.exp > 1) {//if the exponent is greater than 1
+                    poly += "x^";
+                    poly += to_string(v->elem.exp);
+                }
+                else if (v->elem.exp == 1) { //if the exponent is 1
+                    poly += "x";                  
+                }  
+                else { // if exponent is 0
+                   poly += to_string(v->elem.coef); 
+                }
+                if (v->next != NULL && v->next->elem.coef > 0) {
+                    poly += "+";
+                }
+            }
+        v = v->next;
+    }
+    return poly;
+}
+
+float Polynomial::eval(float x) {
+    DNode* v = Dlist.header;
+    float total = 0;
+    while (v != NULL) { //evaluates each term in linked list with given x value and sums it
+        total += (v->elem.coef)*pow(x,v->elem.exp);
+        v = v->next;
+    }
+    return total;
+}
+
+Polynomial Polynomial::operator+(Polynomial& p) {
+    Polynomial *final = new Polynomial; //make a new linked list final
+    DNode* one = Dlist.header;
+    DNode* two = p.Dlist.header;
+    int c = 0;
+    int e = 0;
+    
+    if (two->next == NULL){ // if list 2 is empty and list 1 isn't, copy 1 to final
+        while(one->next != NULL){
+            c = one->elem.coef;
+            e = one->elem.exp;
+            final.insertTerm(c,e); //inserts term into new linked list final
+            one = one->next;
+        }
+    }
+    else if (one->next == NULL) { //else if list 1 is empty but list 2 isn't, copy 2 to final
+        while(two->next != NULL){
+            c = two->elem.coef;
+            e = two->elem.exp;
+            final.insertTerm(c,e); //inserts term into new linked list final
+            two = two->next;
+        }
+    }
+    else { //if both lists aren't empty
+        while (one != NULL && two != NULL){
+            if (one->elem.exp == two->elem.exp){ //if current term in both lists has same exponent
+                c = one->elem.coef + two->elem.coef; //adds coefficient of the two terms
+                e = one->elem.exp; // stores exponent of term
+                one = one->next;
+                two = two->next;
+            }
+            else if (two->elem.exp > one->elem.exp){  //if exponent of term in first list is less than exponent of term in second list
+                c = two->elem.coef;
+                e = two->elem.exp;
+                two = two->next;
+            }
+            else{
+                c = one->elem.coef;
+                e = one->elem.exp;
+                one = one->next;
+            }
+            final.insertTerm(c,e); //inserts term into new linked list final
+        }        
+    }
+    
+    return *final;
+}
+
+
+int main( ) {
+    DLinkedList a;	
+    a.addBack(Term(5, 2));
+    a.addBack(Term(4, 1));
+    a.addBack(Term(6, 0));
+    cout << a.front().coef << " x " << a.front().exp << endl;
+    a.removeFront();
+    
+    Polynomial pp;
+    cin >> pp;
+    Polynomial x;
+    cin >> x;
+    
+    cout << pp << endl;
+    //cout << pp.eval(2);
+    cout << x << endl;
+    
+    
+    Polynomial result = pp + x;
+    cout << result;
+    
+}
